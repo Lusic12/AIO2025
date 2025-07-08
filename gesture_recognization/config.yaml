@@ -1,0 +1,27 @@
+gestures:
+  0: "turn_off"      # Tắt tất cả đèn / Không có cử chỉ
+  1: "light1_on"     # Bật đèn số 1
+  2: "light1_off"    # Tắt đèn số 1  
+  3: "light2_on"     # Bật đèn số 2
+  4: "light2_off"    # Tắt đèn số 2
+  5: "turn_on"       # Cử chỉ OK 
+
+# Cấu hình cảm biến
+sensor_settings:
+  max_hands: 1
+  detection_confidence: 0.7
+  tracking_confidence: 0.5
+
+# Cấu hình model
+model_settings:
+  input_size: 63        # 21 landmarks x 3 coordinates
+  hidden_sizes: [128, 64, 32]
+  dropout: 0.2
+  learning_rate: 0.001
+
+# Cấu hình ESP32
+esp32_settings:
+  default_ip: "192.168.1.100"
+  port: 80
+  timeout: 2
+

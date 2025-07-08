@@ -1,0 +1,1110 @@
+\section{Phần nhận diện cử chỉ tay điều khiển ESP32}
+
+Dự án này xây dựng một hệ thống nhận diện cử chỉ tay hoàn chỉnh để điều khiển ESP32 thông qua camera và machine learning. Hệ thống được tổ chức thành 3 bước độc lập và có thể tái sử dụng:
+
+\begin{itemize}
+    \item \textbf{Step 1:} Thu thập dữ liệu cử chỉ tay (Data Collection)
+    \item \textbf{Step 2:} Huấn luyện và đánh giá mô hình (Training \& Recognition)
+    \item \textbf{Step 3:} Điều khiển ESP32 thời gian thực (Real-time Control)
+\end{itemize}
+
+Mỗi bước được thiết kế modular với các utility class được chia sẻ để đảm bảo tính nhất quán và khả năng mở rộng.
+
+\section*{THIẾT LẬP MÔI TRƯỜNG VÀ CẤU HÌNH}
+
+Trước khi bắt đầu workflow 3 bước, cần thiết lập:
+
+\begin{itemize}
+    \item Môi trường Python với Conda và dependencies
+    \item Cấu hình các lớp cử chỉ trong file \texttt{config.yaml}
+    \item Thiết lập ESP32 HTTP server
+    \item Kiểm tra tương thích giữa các module
+\end{itemize}
+
+\subsection{Thiết lập Môi trường Làm Việc}
+
+\subsubsection{Cài đặt Conda}
+
+Dự án sử dụng \textbf{Conda} để tạo môi trường ảo đảm bảo tính ổn định và khả năng tái tạo:
+
+\textbf{Tùy chọn 1: Anaconda (Phiên bản đầy đủ)}
+\begin{itemize}
+    \item Truy cập: \url{https://www.anaconda.com/download}
+    \item Tải xuống phiên bản phù hợp với hệ điều hành
+    \item Cài đặt theo hướng dẫn trên website
+\end{itemize}
+
+\textbf{Tùy chọn 2: Miniconda (Phiên bản nhẹ - Khuyến nghị)}
+\begin{itemize}
+    \item Truy cập: \url{https://docs.anaconda.com/miniconda/}
+    \item Tải xuống và cài đặt phiên bản minimal
+    \item Tiết kiệm dung lượng ổ cứng
+\end{itemize}
+
+\subsubsection{Tạo và Kích hoạt Môi trường Ảo}
+
+\begin{aivncodebox}
+\begin{python}
+# Tạo môi trường mới với Python 3.10
+conda create -n gesture_env python=3.10
+
+# Kích hoạt môi trường  
+conda activate gesture_env
+
+# Kiểm tra phiên bản Python
+python --version
+\end{python}
+\end{aivncodebox}
+
+\textbf{Lưu ý quan trọng:}
+\begin{itemize}
+    \item Python 3.10 được khuyến nghị vì tương thích tốt với MediaPipe và PyTorch
+    \item Đảm bảo môi trường được kích hoạt trước khi cài đặt thư viện
+    \item Sử dụng \texttt{conda deactivate} để thoát môi trường
+\end{itemize}
+
+\subsubsection{Cài đặt Dependencies}
+
+File \texttt{requirements.txt} chứa đầy đủ dependencies được cập nhật:
+
+\begin{aivncodebox}
+\begin{python}
+# Computer Vision và Hand Detection
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+
+# Thư viện máy học
+torch>=2.0.0
+torchvision>=0.15.0
+torchmetrics>=1.0.0
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Configuration và HTTP
+PyYAML>=6.0
+requests>=2.31.0
+pyserial
+
+# Visualization (Optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+cvzone
+requests
+
+\end{python}
+\end{aivncodebox}
+
+Cài đặt tất cả dependencies:
+
+\begin{aivncodebox}
+\begin{python}
+# Di chuyển vào thư mục dự án
+cd gesture_recognization/
+
+# Cài đặt từ requirements.txt
+pip install -r requirements.txt
+
+# Kiểm tra cài đặt thành công
+python -c "import torch, cv2, mediapipe, yaml; print('Setup thành công!')"
+\end{python}
+\end{aivncodebox}
+
+
+\subsection{Cấu hình config.yaml}
+
+File \texttt{config.yaml} là trung tâm cấu hình cho toàn bộ hệ thống:
+
+\begin{aivncodebox}
+\begin{python}
+gestures:
+  0: "turn_off"      # Tắt tất cả đèn / Không có cử chỉ
+  1: "light1_on"     # Bật đèn số 1
+  2: "light1_off"    # Tắt đèn số 1  
+  3: "light2_on"     # Bật đèn số 2
+  4: "light2_off"    # Tắt đèn số 2
+  5: "turn_on"       # Cử chỉ OK 
+
+# Cấu hình cảm biến
+sensor_settings:
+  max_hands: 1
+  detection_confidence: 0.7
+  tracking_confidence: 0.5
+
+# Cấu hình model
+model_settings:
+  input_size: 63        # 21 landmarks x 3 coordinates
+  hidden_sizes: [128, 64, 32]
+  dropout: 0.2
+  learning_rate: 0.001
+
+# Cấu hình ESP32
+esp32_settings:
+  default_ip: "192.168.1.100"
+  port: 80
+  timeout: 2
+
+\end{python}
+\end{aivncodebox}
+
+\textbf{Giải thích cấu hình:}
+\begin{itemize}
+    \item \textbf{gestures:} Mapping từ class ID (0-5) đến tên cử chỉ
+    \item \textbf{sensor\_settings:} Cấu hình độ nhạy MediaPipe detection
+    \item \textbf{model\_settings:} Kiến trúc và hyperparameters cho neural network
+    \item \textbf{esp32\_settings:} Thông tin kết nối ESP32 HTTP server
+    \item \textbf{data\_settings:} Cấu hình cho quá trình thu thập dữ liệu
+\end{itemize}
+
+\subsection{Cấu trúc Dự án Theo Workflow 3 Bước}
+
+Dự án được tổ chức theo cấu trúc modular với 3 bước chính:
+
+\begin{verbatim}
+gesture_recognization/
+|-- config.yaml                          # File cấu hình
+|-- requirements.txt                     # Python dependencies  
+|-- main.py                              # Entry point voi menu
+|-- test_esp32_connection.py             # Kiểm tra kết nối esp32
+|-- README.md                            # Hướng dẫn tổng quan
+|
+|-- Step_1/                              # Data Collection Module
+|   |-- data_collector.py                # Main collection module
+|   +-- README.md                        # Hướng dẫn Step1
+|
+|-- Step_2/                              # Training & Recognition Module
+|   |-- gesture_trainer_recognizer.py    # Training và recognition
+|   |-- hand_gesture_recognition.ipynb   # Jupyter notebook của Training và recognition
+|   +-- README.md                        # Hướng dẫn Step 2
+|
++-- Step_3/                              # Real-time Control Module
+    |-- esp32_control.py                 # ESP32 control real-time
+|-- relay_control.py                     # Relay control real-time
+    +-- README.md                        # Hướng dẫn Step 3
+\end{verbatim}
+
+\textbf{Ưu điểm của cấu trúc modular:}
+\begin{itemize}
+    \item Mỗi Step có thể chạy độc lập
+    \item Shared utilities được sử dụng chung
+    \item Dễ dàng mở rộng và bảo trì
+    \item Tương thích ngược với code cũ
+\end{itemize}
+
+% =====================
+% STEP 1: HAND GESTURE DATA COLLECTION
+% =====================
+
+\section{STEP 1: HAND GESTURE DATA COLLECTION}
+
+This step is responsible for collecting hand landmark data from the camera to build the training dataset. The module uses MediaPipe to detect 21 hand landmarks and saves them as CSV files.
+
+\subsection{Shared Utility Classes}
+
+\subsubsection{Class HandLandmarksDetector}
+
+The main class for hand landmark detection and extraction:
+
+\begin{aivncodebox}
+\begin{python}
+import cv2
+import mediapipe as mp
+import numpy as np
+from typing import Tuple, Optional, List
+
+class HandLandmarksDetector:
+    """Detect and extract hand landmarks from a frame"""
+    
+    def __init__(self, detection_confidence=0.7, tracking_confidence=0.5):
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=1,
+            min_detection_confidence=detection_confidence,
+            min_tracking_confidence=tracking_confidence
+        )
+        self.mp_draw = mp.solutions.drawing_utils
+    
+    def detect_hand(self, frame: np.ndarray) -> Tuple[Optional[List], np.ndarray]:
+        """
+        Returns a list of landmarks if detected, otherwise None, and the annotated frame
+        
+        Returns:
+            landmarks_list: List chứa 63 values (21 landmarks x 3 coords) hoặc None
+            annotated_frame: Frame có vẽ landmarks và connections
+        """
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(rgb_frame)
+        
+        annotated_frame = frame.copy()
+        landmarks_list = []
+        
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                # Vẽ landmarks và connections
+                self.mp_draw.draw_landmarks(
+                    annotated_frame, hand_landmarks, 
+                    self.mp_hands.HAND_CONNECTIONS
+                )
+                
+                # Trích xuất coordinates (x, y, z) cho 21 landmarks
+                landmarks = []
+                for landmark in hand_landmarks.landmark:
+                    landmarks.extend([landmark.x, landmark.y, landmark.z])
+                
+                landmarks_list.append(landmarks)
+        
+        return landmarks_list if landmarks_list else None, annotated_frame
+    
+    def __del__(self):
+        """Cleanup resources"""
+        if hasattr(self, 'hands'):
+            self.hands.close()
+\end{python}
+\end{aivncodebox}
+
+\subsubsection{Class HandDatasetWriter}
+
+Class for writing hand landmark data to CSV with buffer optimization:
+
+\begin{aivncodebox}
+\begin{python}
+import os
+import csv
+from typing import List
+
+class HandDatasetWriter:
+    """Write hand landmarks to CSV file with buffer"""
+    
+    def __init__(self, file_path: str, buffer_size: int = 100):
+        # Create directory if it does not exist
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        self.file_path = file_path
+        self.buffer_size = buffer_size
+        self.sample_count = 0
+        self.buffer_count = 0
+
+        # Open CSV file for writing
+        self.csv_file = open(self.file_path, 'w', newline="", encoding="utf-8") 
+        self.file_writer = csv.writer(self.csv_file, delimiter=',')
+
+        # Write header: 63 landmarks + 1 label column
+        header = []
+        for i in range(21):  # 21 landmarks từ MediaPipe
+            header.extend([f'x{i}', f'y{i}', f'z{i}'])
+        header.append('label')
+        self.file_writer.writerow(header)
+
+        print(f'Initialized CSV writer: {self.file_path}')
+    
+    def add(self, hand_landmarks: List[float], label: int):
+        """Add a sample to the dataset"""
+        if len(hand_landmarks) != 63:
+            raise ValueError(f"Expected 63 landmarks, got {len(hand_landmarks)}")
+        
+        # Write row: [x0,y0,z0, x1,y1,z1, ..., x20,y20,z20, label]
+        row = hand_landmarks + [label]
+        self.file_writer.writerow(row)
+        
+        self.sample_count += 1
+        self.buffer_count += 1
+        
+        # Auto flush when buffer is full
+        if self.buffer_count >= self.buffer_size:
+            self.flush()
+    
+    def flush(self):
+        """Flush buffer to disk"""
+        self.csv_file.flush()
+        self.buffer_count = 0
+        print(f"Flushed buffer. Total samples: {self.sample_count}")
+    
+    def close(self):
+        """Close file and cleanup"""
+        self.flush()
+        self.csv_file.close()
+        print(f"Saved {self.sample_count} samples to {self.file_path}")
+\end{python}
+\end{aivncodebox}
+
+\subsection{Configuration Loading Functions}
+
+\begin{aivncodebox}
+\begin{python}
+import yaml
+from typing import Dict
+
+def load_config(config_path: str = "config.yaml") -> Dict:
+    """Load configuration from YAML file"""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        return config
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        raise
+
+def get_gesture_mapping(config_path: str = "config.yaml") -> Dict[int, str]:
+    """Get gesture mapping from config"""
+    config = load_config(config_path)
+    return config.get('gestures', {})
+
+def is_handsign_character(char: str) -> bool:
+    """Check if character is valid for gesture mapping (a-p or space)"""
+    return ord('a') <= ord(char) <= ord('p') or char == " "
+\end{python}
+\end{aivncodebox}
+
+\subsection{Main Data Collection Logic}
+
+\subsubsection{Function run() - Core Collection Process}
+
+\begin{aivncodebox}
+\begin{python}
+def run_data_collection(data_path: str, image_path: str, mode: str, 
+                       resolution: tuple = (1280, 720)) -> None:
+    """
+    Run the data collection process for a dataset (train/val/test)
+    
+    Args:
+        data_path: Directory to save CSV files
+        image_path: Directory to save sample images  
+        mode: Dataset mode ('train', 'val', 'test')
+        resolution: Camera resolution (width, height)
+    """
+    # Create output directories
+    os.makedirs(data_path, exist_ok=True)
+    os.makedirs(image_path, exist_ok=True)
+    
+    # Load gesture configuration
+    gesture_mapping = get_gesture_mapping()
+    
+    # Initialize components
+    detector = HandLandmarksDetector()
+    csv_path = os.path.join(data_path, f"landmarks_{mode}.csv")
+    writer = HandDatasetWriter(csv_path)
+    
+    # Initialize camera
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+    
+    # State variables
+    current_gesture_id = None
+    is_recording = False
+    frame_count = 0
+    
+    print(f"=== DATA COLLECTION - {mode.upper()} MODE ===")
+    print("Controls:")
+    print("- Keys 'a'-'p': Select gesture (ID 0-15)")
+    print("- Space: Select gesture ID 0 (turn_off)")  
+    print("- Press key 1st time: Select gesture")
+    print("- Press key 2nd time: Start/stop recording")
+    print("- Key 's': Save sample image")
+    print("- Key 'q': Quit")
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Cannot read from camera!")
+            break
+        
+        # Detect hand landmarks
+        hands, annotated_frame = detector.detect_hand(frame)
+        
+        # Display UI information
+        display_frame = annotated_frame.copy()
+        
+        # Status text
+        status_text = f"Mode: {mode.upper()}"
+        if current_gesture_id is not None:
+            gesture_name = gesture_mapping.get(current_gesture_id, "Unknown")
+            status_text += f" | Gesture: {gesture_name} (ID: {current_gesture_id})"
+        status_text += f" | Recording: {'ON' if is_recording else 'OFF'}"
+        
+        cv2.putText(display_frame, status_text, (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        # Recording indicator and data collection
+        if is_recording and hands and current_gesture_id is not None:
+            writer.add(hands[0], current_gesture_id)
+            frame_count += 1
+            
+            # Recording indicator
+            cv2.putText(display_frame, f"RECORDING... Frames: {frame_count}", 
+                       (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            
+            # Progress circle
+            cv2.circle(display_frame, (50, 120), 20, (0, 0, 255), -1)
+        
+        # Hand detection indicator
+        if hands:
+            cv2.putText(display_frame, "Hand Detected", (10, display_frame.shape[0] - 20),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        cv2.imshow('Hand Gesture Data Collection', display_frame)
+        
+        # Keyboard input handling
+        key = cv2.waitKey(1) & 0xFF
+        
+        if key == ord('q'):
+            break
+        elif key == ord('s') and hands:
+            # Save sample image
+            if current_gesture_id is not None:
+                gesture_name = gesture_mapping.get(current_gesture_id, "unknown")
+                img_filename = f"{gesture_name}_{mode}_sample.jpg"
+                img_path = os.path.join(image_path, img_filename)
+                cv2.imwrite(img_path, display_frame)
+                print(f"Saved sample: {img_filename}")
+        elif is_handsign_character(chr(key)) if key < 256 else False:
+            # Handle gesture selection
+            if chr(key) == ' ':
+                new_gesture_id = 0  # Space = turn_off
+            else:
+                new_gesture_id = ord(chr(key)) - ord('a') + 1
+            
+            if new_gesture_id in gesture_mapping:
+                if current_gesture_id == new_gesture_id:
+                    # Toggle recording for same gesture
+                    is_recording = not is_recording
+                    if is_recording:
+                        frame_count = 0
+                        print(f"Started recording: {gesture_mapping[new_gesture_id]}")
+                    else:
+                        print(f"Stopped recording. Collected {frame_count} frames")
+                else:
+                    # Select new gesture
+                    current_gesture_id = new_gesture_id
+                    is_recording = False
+                    frame_count = 0
+                    print(f"Selected gesture: {gesture_mapping[new_gesture_id]}")
+            else:
+                print(f"Invalid gesture ID: {new_gesture_id}")
+    
+    # Cleanup
+    cap.release()
+    cv2.destroyAllWindows()
+    writer.close()
+    print(f"Data collection completed for {mode}")
+\end{python}
+\end{aivncodebox}
+\subsubsection{Main Function và Usage}
+
+\begin{aivncodebox}
+\begin{python}
+def main():
+    """Main function cho data collection"""
+    print("=== GESTURE DATA COLLECTION SYSTEM ===")
+    
+    # Load configuration
+    try:
+        gesture_mapping = get_gesture_mapping()
+        print(f"Loaded {len(gesture_mapping)} gestures from config.yaml")
+        for gid, gname in gesture_mapping.items():
+            print(f"  {gid}: {gname}")
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        return
+    
+    # Setup paths
+    data_path = "./data"
+    image_path = "./sample_images"
+    
+    # Collection workflow
+    datasets = ["train", "val", "test"]
+    
+    for dataset in datasets:
+        print(f"\n{'='*50}")
+        print(f"Starting {dataset.upper()} data collection...")
+        print(f"{'='*50}")
+        
+        input(f"Press Enter to start {dataset} collection...")
+        
+        try:
+            run_data_collection(data_path, image_path, dataset)
+        except Exception as e:
+            print(f"Error during {dataset} collection: {e}")
+            continue
+    
+    print("\n=== DATA COLLECTION COMPLETED ===")
+    print("Output structure:")
+    print("./data/")
+    print("  |-- landmarks_train.csv")
+    print("  |-- landmarks_val.csv") 
+    print("  +-- landmarks_test.csv")
+    print("./sample_images/")
+    print("  |-- turn_off_train_sample.jpg")
+    print("  |-- light1_on_train_sample.jpg")
+    print("  +-- ...")
+
+if __name__ == "__main__":
+    main()
+\end{python}
+\end{aivncodebox}
+
+\subsection{Cách sử dụng Step 1}
+
+\subsubsection{Chạy từ main.py}
+
+\begin{aivncodebox}
+\begin{python}
+# Di chuyển vào thư mục dự án
+cd gesture_recognization/
+
+# Chạy main menu
+python main.py
+
+# Chọn option 1: Data Collection (Step 1)
+\end{python}
+\end{aivncodebox}
+
+\subsubsection{Chạy trực tiếp module}
+
+\begin{aivncodebox}
+\begin{python}
+# Chạy trực tiếp Step 1
+cd Step_1/
+python data_collector.py
+
+# Hoặc test compatibility
+python test_compatibility.py
+\end{python}
+\end{aivncodebox}
+
+\subsubsection{Workflow Thu thập Dữ liệu}
+
+\textbf{Bước 1: Chuẩn bị}
+\begin{itemize}
+    \item Đảm bảo camera hoạt động tốt
+    \item Môi trường ánh sáng đều, nền đơn giản
+    \item Khoảng cách camera 40-80cm
+\end{itemize}
+
+\textbf{Bước 2: Thu thập theo từng gesture}
+\begin{itemize}
+    \item Nhấn phím 'a' đến 'p' để chọn gesture (theo config.yaml)
+    \item Nhấn phím lần 2 để bắt đầu recording
+    \item Thực hiện cử chỉ liên tục cho đến khi đủ samples
+    \item Nhấn phím lần 3 để dừng recording
+\end{itemize}
+
+\textbf{Bước 3: Lưu sample images}
+\begin{itemize}
+    \item Nhấn 's' để lưu ảnh mẫu cho gesture hiện tại
+    \item Ảnh sẽ được lưu vào thư mục sample\_images/
+\end{itemize}
+
+\textbf{Bước 4: Lặp lại cho tất cả datasets}
+\begin{itemize}
+    \item Train dataset: 70\% dữ liệu (nhiều samples nhất)
+    \item Validation dataset: 15\% dữ liệu  
+    \item Test dataset: 15\% dữ liệu
+\end{itemize}
+
+\subsection{Output và Kiểm tra Chất lượng}
+
+\subsubsection{Cấu trúc Output}
+
+\begin{aivncodebox}
+\begin{python}
+# CSV Structure: 64 columns
+# [x0, y0, z0, x1, y1, z1, ..., x20, y20, z20, label]
+# 
+# Ví dụ một row trong landmarks_train.csv:
+# 0.5234,0.3421,0.0012,...,0.7891,0.4567,0.0089,2
+#
+# Với:
+# - 63 columns đầu: tọa độ (x,y,z) của 21 hand landmarks
+# - Column cuối: label ID (0-6 theo config.yaml)
+\end{python}
+\end{aivncodebox}
+
+\subsubsection{Kiểm tra Chất lượng Dữ liệu}
+
+\begin{aivncodebox}
+\begin{python}
+import pandas as pd
+
+def check_dataset_quality(csv_path: str):
+    """Kiểm tra chất lượng dataset"""
+    df = pd.read_csv(csv_path)
+    
+    print(f"Dataset: {csv_path}")
+    print(f"Total samples: {len(df)}")
+    print(f"Features: {df.shape[1] - 1}")  # Trừ label column
+    
+    # Check distribution
+    print("\nGesture distribution:")
+    gesture_counts = df['label'].value_counts().sort_index()
+    for label_id, count in gesture_counts.items():
+        print(f"  ID {label_id}: {count} samples")
+    
+    # Check for missing values
+    missing = df.isnull().sum().sum()
+    print(f"\nMissing values: {missing}")
+    
+    # Check value ranges
+    feature_cols = [col for col in df.columns if col != 'label']
+    print(f"\nFeature ranges:")
+    print(f"  Min: {df[feature_cols].min().min():.4f}")
+    print(f"  Max: {df[feature_cols].max().max():.4f}")
+
+# Usage
+check_dataset_quality("./data/landmarks_train.csv")
+\end{python}
+\end{aivncodebox}
+
+\section{STEP 2: HUẤN LUYỆN VÀ NHẬN DIỆN MÔ HÌNH}
+
+Step 2 chịu trách nhiệm huấn luyện neural network để phân loại hand gestures từ landmarks data và thực hiện nhận diện real-time. Module này sử dụng PyTorch để xây dựng và huấn luyện mô hình.
+
+\subsection{Neural Network Architecture}
+
+\subsubsection{GestureClassifier Model}
+
+\begin{aivncodebox}
+\begin{python}
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class GestureClassifier(nn.Module):
+    """Neural Network for hand gesture classification"""
+    
+    def __init__(self, input_size=63, hidden_sizes=[128, 64, 32], 
+                 num_classes=7, dropout=0.2):
+        super(GestureClassifier, self).__init__()
+        
+        self.input_size = input_size
+        self.num_classes = num_classes
+        
+        # Build layers dynamically
+        layers = []
+        prev_size = input_size
+        
+        for hidden_size in hidden_sizes:
+            layers.extend([
+                nn.Linear(prev_size, hidden_size),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            ])
+            prev_size = hidden_size
+        
+        # Output layer
+        layers.append(nn.Linear(prev_size, num_classes))
+        
+        self.network = nn.Sequential(*layers)
+        
+        # Initialize weights
+        self.apply(self._init_weights)
+    
+    def _init_weights(self, m):
+        """Initialize network weights"""
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            torch.nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        """Forward pass"""
+        return self.network(x)
+    
+    def predict_proba(self, x):
+        """Predict with probabilities"""
+        with torch.no_grad():
+            logits = self.forward(x)
+            return F.softmax(logits, dim=-1)
+    
+    def predict(self, x):
+        """Predict class labels"""
+        proba = self.predict_proba(x)
+        return torch.argmax(proba, dim=-1)
+\end{python}
+\end{aivncodebox}
+
+\subsection{Data Loading và Preprocessing}
+
+\subsubsection{HandGestureDataset}
+
+\begin{aivncodebox}
+\begin{python}
+import pandas as pd
+import torch
+from torch.utils.data import Dataset, DataLoader
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+class HandGestureDataset(Dataset):
+    """Dataset class for hand gesture landmarks"""
+    
+    def __init__(self, csv_path, transform=None, scaler=None):
+        self.data = pd.read_csv(csv_path)
+        self.transform = transform
+        self.scaler = scaler
+        
+        # Separate features và labels
+        self.features = self.data.iloc[:, :-1].values.astype(np.float32)
+        self.labels = self.data.iloc[:, -1].values.astype(np.int64)
+        
+        # Apply scaling nếu có
+        if self.scaler is not None:
+            self.features = self.scaler.transform(self.features)
+        
+        print(f"Loaded dataset: {len(self.data)} samples, "
+              f"{self.features.shape[1]} features, "
+              f"{len(np.unique(self.labels))} classes")
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        features = torch.FloatTensor(self.features[idx])
+        label = torch.LongTensor([self.labels[idx]])[0]
+        
+        if self.transform:
+            features = self.transform(features)
+        
+        return features, label
+    
+    def get_class_distribution(self):
+        """Trả về phân phối classes"""
+        unique, counts = np.unique(self.labels, return_counts=True)
+        return dict(zip(unique, counts))
+
+def create_dataloaders(train_path, val_path, test_path, batch_size=32, 
+                      normalize=True):
+    """Tạo DataLoaders cho train/val/test"""
+    
+    # Load và fit scaler trên train data
+    scaler = None
+    if normalize:
+        train_data = pd.read_csv(train_path)
+        train_features = train_data.iloc[:, :-1].values
+        scaler = StandardScaler()
+        scaler.fit(train_features)
+    
+    # Tạo datasets
+    train_dataset = HandGestureDataset(train_path, scaler=scaler)
+    val_dataset = HandGestureDataset(val_path, scaler=scaler)
+    test_dataset = HandGestureDataset(test_path, scaler=scaler)
+    
+    # Tạo dataloaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, 
+                             shuffle=True, num_workers=2)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, 
+                           shuffle=False, num_workers=2)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, 
+                            shuffle=False, num_workers=2)
+    
+    return train_loader, val_loader, test_loader, scaler
+\end{python}
+\end{aivncodebox}
+
+\subsection{Training Process}
+
+\subsubsection{GestureTrainer Class}
+
+\begin{aivncodebox}
+\begin{python}
+import torch.optim as optim
+from torchmetrics import Accuracy, F1Score
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+class GestureTrainer:
+    """Training manager for gesture classification"""
+    
+    def __init__(self, model, train_loader, val_loader, config):
+        self.model = model
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.config = config
+        
+        # Setup optimizer và criterion
+        self.optimizer = optim.Adam(model.parameters(), 
+                                   lr=config['learning_rate'])
+        self.criterion = nn.CrossEntropyLoss()
+        
+        # Metrics
+        num_classes = config.get('num_classes', 7)
+        self.train_acc = Accuracy(task='multiclass', num_classes=num_classes)
+        self.val_acc = Accuracy(task='multiclass', num_classes=num_classes)
+        self.val_f1 = F1Score(task='multiclass', num_classes=num_classes, 
+                             average='weighted')
+        
+        # Training history
+        self.history = {
+            'train_loss': [], 'train_acc': [],
+            'val_loss': [], 'val_acc': [], 'val_f1': []
+        }
+        
+        # Device
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(self.device)
+        print(f"Training on device: {self.device}")
+    
+    def train_epoch(self):
+        """Train một epoch"""
+        self.model.train()
+        total_loss = 0
+        self.train_acc.reset()
+        
+        pbar = tqdm(self.train_loader, desc="Training")
+        for features, labels in pbar:
+            features, labels = features.to(self.device), labels.to(self.device)
+            
+            # Forward pass
+            self.optimizer.zero_grad()
+            outputs = self.model(features)
+            loss = self.criterion(outputs, labels)
+            
+            # Backward pass
+            loss.backward()
+            self.optimizer.step()
+            
+            # Metrics
+            total_loss += loss.item()
+            preds = torch.argmax(outputs, dim=1)
+            self.train_acc.update(preds, labels)
+            
+            # Update progress bar
+            pbar.set_postfix({
+                'loss': f"{loss.item():.4f}",
+                'acc': f"{self.train_acc.compute():.4f}"
+            })
+        
+        avg_loss = total_loss / len(self.train_loader)
+        avg_acc = self.train_acc.compute()
+        
+        return avg_loss, avg_acc.item()
+    
+    def validate(self):
+        """Validation step"""
+        self.model.eval()
+        total_loss = 0
+        self.val_acc.reset()
+        self.val_f1.reset()
+        
+        with torch.no_grad():
+            for features, labels in tqdm(self.val_loader, desc="Validation"):
+                features, labels = features.to(self.device), labels.to(self.device)
+                
+                outputs = self.model(features)
+                loss = self.criterion(outputs, labels)
+                
+                total_loss += loss.item()
+                preds = torch.argmax(outputs, dim=1)
+                
+                self.val_acc.update(preds, labels)
+                self.val_f1.update(preds, labels)
+        
+        avg_loss = total_loss / len(self.val_loader)
+        avg_acc = self.val_acc.compute().item()
+        avg_f1 = self.val_f1.compute().item()
+        
+        return avg_loss, avg_acc, avg_f1
+    
+    def train(self, epochs):
+        """Full training loop"""
+        print(f"Starting training for {epochs} epochs...")
+        
+        best_val_acc = 0
+        
+        for epoch in range(epochs):
+            print(f"\nEpoch {epoch+1}/{epochs}")
+            print("-" * 50)
+            
+            # Train
+            train_loss, train_acc = self.train_epoch()
+            
+            # Validate
+            val_loss, val_acc, val_f1 = self.validate()
+            
+            # Save history
+            self.history['train_loss'].append(train_loss)
+            self.history['train_acc'].append(train_acc)
+            self.history['val_loss'].append(val_loss)
+            self.history['val_acc'].append(val_acc)
+            self.history['val_f1'].append(val_f1)
+            
+            # Print metrics
+            print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
+            print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
+            
+            # Save best model
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'val_acc': val_acc,
+                    'config': self.config
+                }, 'best_gesture_model.pth')
+                print(f"New best model saved! Val Acc: {val_acc:.4f}")
+        
+        print(f"\nTraining completed! Best validation accuracy: {best_val_acc:.4f}")
+        return self.history
+\end{python}
+\end{aivncodebox}
+
+\subsection{Real-time Gesture Recognition}
+
+\subsubsection{GestureRecognizer Class}
+
+\begin{aivncodebox}
+\begin{python}
+import cv2
+import numpy as np
+from collections import deque
+import time
+
+class GestureRecognizer:
+    """Real-time gesture recognition from camera"""
+    
+    def __init__(self, model_path, scaler, gesture_mapping, 
+                 confidence_threshold=0.7, smoothing_window=5):
+        
+        # Load model
+        checkpoint = torch.load(model_path, map_location='cpu')
+        config = checkpoint['config']
+        
+        self.model = GestureClassifier(
+            input_size=config['input_size'],
+            hidden_sizes=config['hidden_sizes'],
+            num_classes=config['num_classes']
+        )
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.eval()
+        
+        self.scaler = scaler
+        self.gesture_mapping = gesture_mapping
+        self.confidence_threshold = confidence_threshold
+        
+        # Smoothing buffer
+        self.prediction_buffer = deque(maxlen=smoothing_window)
+        
+        # Hand detector
+        self.hand_detector = HandLandmarksDetector()
+        
+        print(f"Model loaded. Best validation accuracy: {checkpoint['val_acc']:.4f}")
+    
+    def predict_gesture(self, landmarks):
+        """Predict gesture from landmarks"""
+        if landmarks is None or len(landmarks) != 63:
+            return None, 0.0
+        
+        # Preprocess
+        landmarks_array = np.array(landmarks).reshape(1, -1).astype(np.float32)
+        if self.scaler:
+            landmarks_array = self.scaler.transform(landmarks_array)
+        
+        # Predict
+        with torch.no_grad():
+            features = torch.FloatTensor(landmarks_array)
+            probabilities = self.model.predict_proba(features)
+            
+            max_prob = torch.max(probabilities).item()
+            predicted_class = torch.argmax(probabilities).item()
+        
+        return predicted_class, max_prob
+    
+    def get_smoothed_prediction(self, landmarks):
+        """Predict with smoothing"""
+        prediction, confidence = self.predict_gesture(landmarks)
+        
+        if prediction is not None and confidence > self.confidence_threshold:
+            self.prediction_buffer.append(prediction)
+        
+        if len(self.prediction_buffer) == 0:
+            return None, 0.0
+        
+        # Most common prediction in buffer
+        most_common = max(set(self.prediction_buffer), 
+                         key=self.prediction_buffer.count)
+        smoothed_confidence = self.prediction_buffer.count(most_common) / len(self.prediction_buffer)
+        
+        return most_common, smoothed_confidence
+    
+    def run_recognition(self, callback=None):
+        """Run real-time recognition"""
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        
+        fps_counter = 0
+        fps_start_time = time.time()
+        
+        print("Gesture Recognition started. Press 'q' to quit.")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Detect hand
+            hands, annotated_frame = self.hand_detector.detect_hand(frame)
+            
+            gesture_name = "No Hand"
+            confidence = 0.0
+            
+            if hands:
+                # Predict gesture
+                predicted_class, raw_confidence = self.get_smoothed_prediction(hands[0])
+                
+                if predicted_class is not None:
+                    gesture_name = self.gesture_mapping.get(predicted_class, "Unknown")
+                    confidence = raw_confidence
+                    
+                    # Callback cho action (ESP32 control)
+                    if callback and confidence > 0.8:
+                        callback(gesture_name, predicted_class, confidence)
+            
+            # Display UI
+            display_frame = annotated_frame.copy()
+            
+            # Gesture info
+            cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(display_frame, f"Confidence: {confidence:.2f}", (10, 70),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            # FPS counter
+            fps_counter += 1
+            if time.time() - fps_start_time >= 1.0:
+                fps = fps_counter / (time.time() - fps_start_time)
+                fps_counter = 0
+                fps_start_time = time.time()
+            
+            cv2.putText(display_frame, f"FPS: {fps:.1f}", (10, display_frame.shape[0] - 20),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            
+            cv2.imshow('Gesture Recognition', display_frame)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        cap.release()
+        cv2.destroyAllWindows()
+\end{python}
+\end{aivncodebox}
+
+\subsection{How to Use Step 2}
+
+\textbf{Train the model:}
+\begin{aivncodebox}
+\begin{python}
+cd gesture_recognization/
+python main.py  # Select option 2: Model Training (Step 2)
+\end{python}
+\end{aivncodebox}
+
+\textbf{Test real-time recognition:}
+\begin{aivncodebox}
+\begin{python}
+cd gesture_recognization/
+python main.py  # Select option 3: Real-time Recognition (Step 2)
+\end{python}
+\end{aivncodebox}
