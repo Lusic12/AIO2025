@@ -12,16 +12,9 @@ sensor_settings:
   detection_confidence: 0.7
   tracking_confidence: 0.5
 
-# Cấu hình model
-model_settings:
-  input_size: 63        # 21 landmarks x 3 coordinates
-  hidden_sizes: [128, 64, 32]
-  dropout: 0.2
-  learning_rate: 0.001
 
-# Cấu hình ESP32
-esp32_settings:
-  default_ip: "192.168.1.100"
-  port: 80
-  timeout: 2
+Dataset:
+  train: 'E:\AIO2025\gesture_recognization\data\landmarks_train.csv'
+  val: 'E:\AIO2025\gesture_recognization\data\landmarks_val.csv'
+  test: 'E:\AIO2025\gesture_recognization\data\landmarks_test.csv'
 

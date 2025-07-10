@@ -6,6 +6,7 @@ mediapipe>=0.10.0
 torch>=2.0.0
 torchvision>=0.15.0
 torchmetrics>=1.0.0
+scikit-learn=1.7.0
 
 # Data Processing
 numpy>=1.24.0

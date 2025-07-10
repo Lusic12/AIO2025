@@ -1,203 +1,181 @@
-# ESP32 Hand Gesture Recognition Project
+# 🤲 Hand Gesture Recognition & Relay Control
 
-Dự án nhận diện cử chỉ tay để điều khiển ESP32 thông qua camera và AI.
+Hệ thống nhận diện cử chỉ tay thông minh để điều khiển relay Modbus RTU hoặc mô phỏng với AI.
 
-## Cấu trúc dự án
+[![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10+-green)](https://mediapipe.dev)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-orange)](https://pytorch.org)
+
+## ✨ Tính năng chính
+
+- 🎯 **Nhận diện cử chỉ real-time** với độ chính xác cao
+- 🔌 **Điều khiển relay Modbus RTU** (9600 baud) 
+- 🎮 **Chế độ mô phỏng** với hiệu ứng đèn sinh động
+- 🛡️ **Chống nhiễu gesture** với kỹ thuật debouncing
+- 📊 **Thu thập và huấn luyện dữ liệu** tự động
+- ⚙️ **Cấu hình linh hoạt** qua YAML
+
+## 📁 Cấu trúc dự án
 
 ```
-esp32-http-server/
-├── src/
-│   └── esp32-http-server.ino      # Mã nguồn ESP32
+AIO2025/
 ├── gesture_recognization/
-│   ├── config.yaml                # Cấu hình cử chỉ
-│   ├── requirements.txt           # Thư viện Python
-│   ├── main.py                    # Script chính (entry point)
-│   ├── test_esp32_connection.py   # Test kết nối ESP32
-│   ├── Step_1/                    # Thu thập dữ liệu
-│   │   ├── data_collector.py      # Module thu thập dữ liệu
-│   │   └── generate_landmark_data.py  # Utility functions
-│   ├── Step_2/                    # Training và Recognition
-│   │   └── gesture_trainer_recognizer.py
-│   └── Step_3/                    # Gesture Control
-│       ├── gesture_control.py     # Module điều khiển (phiên bản cũ)
-│       ├── http_esp32.py          # Module điều khiển ESP32 qua HTTP
-│       ├── relay_controller.py    # Module điều khiển Relay qua Modbus
-│       ├── controller.py          # Module base điều khiển Modbus
-│       └── README.md              # Hướng dẫn Step 3
-├── platformio.ini                 # Cấu hình PlatformIO
-└── wokwi.toml                    # Cấu hình Wokwi Simulator
+│   ├── 🧠 common/               # Các lớp AI và utility chung
+│   │   └── models.py            # HandGestureModel, HandLandmarksDetector
+│   ├── ⚡ hardware/             # Điều khiển phần cứng
+│   │   └── modbus_controller.py # ModbusMaster cho relay
+│   ├── 📊 processing/           # Thu thập và xử lý dữ liệu
+│   │   └── data_collector.py    # Thu thập landmarks từ camera
+│   ├── 🎓 training/             # Huấn luyện mô hình AI
+│   │   ├── gesture_trainer_recognizer.py
+│   │   ├── hand_gesture_recgonition.ipynb
+│   │   └── models/              # Model đã huấn luyện (.pth)
+│   ├── 🚀 app/                  # Ứng dụng chính
+│   │   └── main_controller.py   # Điều khiển relay qua gesture
+│   ├── 💾 data/                 # Dữ liệu landmarks (CSV)
+│   ├── config.yaml              # Cấu hình cử chỉ và tham số
+│   ├── requirements.txt         # Dependencies Python
+│   └── README.md                # Hướng dẫn chi tiết
 ```
 
-## Hướng dẫn sử dụng
+## 🚀 Cài đặt nhanh
 
-### Bước 1: Cài đặt môi trường
+### 1. Cài đặt Python dependencies
+```powershell
+# Cài đặt thư viện cần thiết
+pip install -r requirements.txt
 
-1. **Cài đặt Python dependencies:**
-   ```bash
-   cd gesture_recognization
-   pip install -r requirements.txt
-   ```
+# Kiểm tra cài đặt
+python -c "import torch, cv2, mediapipe; print('✅ Setup OK!')"
+```
 
-2. **Cài đặt PlatformIO** (cho ESP32):
-   - Cài PlatformIO IDE extension trong VS Code
-   - Hoặc cài PlatformIO Core: `pip install platformio`
+### 2. (Khuyến nghị) Thiết lập môi trường ảo
+```powershell
+# Tạo môi trường ảo
+python -m venv .venv
 
-### Bước 2: Cấu hình cử chỉ
+# Kích hoạt (Windows)
+.\.venv\Scripts\Activate.ps1
 
-Chỉnh sửa file `config.yaml` để định nghĩa các cử chỉ:
+# Kích hoạt (Linux/Mac)
+source .venv/bin/activate
+```
 
+## 🎮 Sử dụng
+
+### Chế độ Demo - Mô phỏng (Simulation)
+```powershell
+# Chạy với hiệu ứng đèn ảo, an toàn không cần phần cứng
+python -m gesture_recognization.app.main_controller --simulation
+```
+🎯 **Tính năng:** Hiển thị 3 đèn ảo, chuyển màu real-time theo cử chỉ
+
+### Chế độ Production - Phần cứng thật
+```powershell
+# Liệt kê cổng COM có sẵn
+python -m gesture_recognization.app.main_controller --list-ports
+
+# Kết nối với relay module
+python -m gesture_recognization.app.main_controller --port COM3
+```
+
+### Tùy chọn nâng cao
+```powershell
+python -m gesture_recognization.app.main_controller \
+  --model training/models/custom_model.pth \
+  --config config.yaml \
+  --resolution 1920x1080 \
+  --simulation
+```
+
+## 🎯 Các cử chỉ hỗ trợ
+
+| Cử chỉ | Mô tả | Hành động |
+|--------|-------|-----------|
+| ✋ **turn_on** | Bàn tay mở | Bật **tất cả** relay |
+| ✊ **turn_off** | Nắm tay | Tắt **tất cả** relay |
+| 👆 **light1_on** | Giơ 1 ngón | Bật relay số 1 |
+| 🤏 **light1_off** | Chụm 1 ngón | Tắt relay số 1 |
+| ✌️ **light2_on** | Giơ 2 ngón | Bật relay số 2 |
+| 🤞 **light2_off** | Chụm 2 ngón | Tắt relay số 2 |
+
+## 🔧 Phím tắt trong ứng dụng
+
+- `q`: Thoát ứng dụng
+- `r`: Reset tất cả đèn về trạng thái tắt
+- `ESC`: Thoát khẩn cấp
+
+## 🎓 Workflow Development (Dành cho dev)
+
+### 1. Thu thập dữ liệu mới
+```powershell
+python -m processing.data_collector
+```
+📝 **Hướng dẫn:** Nhấn phím tương ứng cử chỉ → Thu thập 50-100 mẫu mỗi cử chỉ
+
+### 2. Huấn luyện model với dữ liệu mới
+```powershell
+python -m training.gesture_trainer_recognizer
+```
+⏱️ **Thời gian:** 2-5 phút (tùy số lượng dữ liệu)
+
+### 3. Test và deploy
+```powershell
+# Test với model mới
+python -m app.main_controller --model training/models/new_model.pth --simulation
+```
+
+## ⚙️ Cấu hình system
+
+### File `config.yaml`
 ```yaml
 gestures:
-  0: "turn_off"      # Tắt tất cả đèn
-  1: "light1_on"     # Bật đèn số 1
-  2: "light1_off"    # Tắt đèn số 1
-  3: "light2_on"     # Bật đèn số 2
-  4: "light2_off"    # Tắt đèn số 2
+  0: "turn_off"      # Tắt tất cả
+  1: "light1_on"     # Bật đèn 1
+  2: "light1_off"    # Tắt đèn 1
+  3: "light2_on"     # Bật đèn 2  
+  4: "light2_off"    # Tắt đèn 2
+  5: "turn_on"       # Bật tất cả
+
+sensor_settings:
+  max_hands: 1                    # Chỉ nhận diện 1 bàn tay
+  detection_confidence: 0.7       # Độ tin cậy phát hiện
+  tracking_confidence: 0.5        # Độ tin cậy tracking
+
+relay_settings:
+  baudrate: 9600                  # Chuẩn Modbus RTU
+  timeout: 2                      # Timeout (giây)
+  debounce_frames: 8              # Số frame xác nhận gesture
 ```
 
-### Bước 3: Khởi tạo môi trường trên anaconda
+## 🛠️ Troubleshooting
 
-```
-conda create -n env gesture python==3.10
-conda activate
-```
+### ❌ Lỗi thường gặp
 
-### Bước 3: Thu thập dữ liệu (Step 1)
-
-```bash
-cd Step_1
-python data_collector.py
+**Camera không hoạt động:**
+```powershell
+# Thử camera index khác
+python -c "import cv2; print([i for i in range(5) if cv2.VideoCapture(i).isOpened()])"
 ```
 
-**Hướng dẫn thu thập:**
-- Nhấn phím tương ứng với cử chỉ (a, b, c, d, e...)
-- Nhấn cùng phím 2 lần để bắt đầu/dừng ghi dữ liệu
-- Nhấn 's' để lưu ảnh mẫu
-- Nhấn 'q' để thoát
+**Relay không phản hồi:**
+```powershell
+# Kiểm tra COM ports
+python -m app.main_controller --list-ports
 
-### Bước 4: Huấn luyện mô hình (Step 2)
-
-```bash
-cd Step_2
-python gesture_trainer_recognizer.py
+# Test kết nối Modbus
+python -m app.main_controller --test --port COM3
 ```
 
-Chọn chức năng **1** để training model.
 
-### Bước 5: Chuẩn bị ESP32
+## 📋 Yêu cầu hệ thống
 
-1. **Upload code lên ESP32:**
-   ```bash
-   pio run --target upload
-   ```
+- 🐍 **Python 3.10+**
+- 📷 **Webcam HD (720p+)**
+- 💾 **4GB RAM** (khuyến nghị 8GB)
+- ⚡ **USB-Serial converter** (nếu dùng relay thật)
+- 🖥️ **Windows 10/11** (Linux/Mac: experimental)
 
-2. **Kiểm tra IP của ESP32:**
-   ```bash
-   pio device monitor
-   ```
 
-### Bước 6: Điều khiển thiết bị (Step 3)
 
-#### Điều khiển ESP32 qua HTTP:
-```bash
-cd Step_3
-python http_esp32.py
-```
-
-#### Điều khiển Relay qua Modbus:
-```bash
-cd Step_3
-python relay_controller.py
-```
-
-#### (Phiên bản cũ) Điều khiển đa chức năng:
-```bash
-cd Step_3
-python gesture_control.py
-```
-
-Hoặc sử dụng script chính:
-```bash
-python main.py
-# Chọn option 4: Điều khiển thiết bị
-```
-
-### Bước 7 (Tùy chọn): Test nhận diện (Step 2)
-
-```bash
-cd Step_2
-python gesture_trainer_recognizer.py
-```
-
-Chọn chức năng **2** và nhập:
-- Đường dẫn đến file model (.pth)
-- IP của ESP32
-
-## Workflow tổng thể
-
-1. **ESP32 Setup**: ESP32 tạo HTTP server để nhận lệnh điều khiển
-2. **Data Collection (Step 1)**: Thu thập landmarks từ camera cho các cử chỉ
-3. **Model Training (Step 2)**: Huấn luyện neural network với dữ liệu đã thu thập
-4. **Gesture Control (Step 3)**: Load model và điều khiển ESP32 real-time
-
-## So sánh các Steps
-
-| Step | Mục đích | Input | Output | 
-|------|----------|--------|---------|
-| **Step 1** | Thu thập dữ liệu | Camera + Cử chỉ tay | CSV files (landmarks) |
-| **Step 2** | Training model | CSV files | Model (.pth) + Recognition |
-| **Step 3** | Điều khiển ESP32 | Model + Camera | HTTP commands → ESP32 |
-
-## Sự khác biệt Step 2 vs Step 3
-
-### Step 2: Training + Recognition
-- **Training**: Huấn luyện model từ dữ liệu
-- **Recognition**: Test model với việc gửi HTTP requests
-- **Focus**: Development và testing
-
-### Step 3: Production Control  
-- **Control**: Load model có sẵn và điều khiển
-- **Optimized**: Tối ưu cho performance và stability
-- **Features**: Smart gesture validation, cooldown, reconnection
-- **Focus**: Production usage
-
-## Troubleshooting
-
-### Lỗi import libraries
-```bash
-pip install -r requirements.txt
-```
-
-### ESP32 không kết nối được
-- Kiểm tra WiFi settings trong code ESP32
-- Đảm bảo máy tính và ESP32 cùng mạng
-- Kiểm tra IP address trong Serial Monitor
-
-### Camera không hoạt động
-- Kiểm tra quyền truy cập camera
-- Thử thay đổi camera index (0, 1, 2...)
-
-### Model accuracy thấp
-- Thu thập thêm dữ liệu training
-- Đảm bảo cử chỉ rõ ràng và nhất quán
-- Tăng số epoch training
-
-## Tính năng
-
-- ✅ Thu thập dữ liệu tự động
-- ✅ Training model với early stopping
-- ✅ Real-time gesture recognition
-- ✅ HTTP communication với ESP32
-- ✅ Giao diện trực quan
-- ✅ Configurable gestures
-
-## Yêu cầu hệ thống
-
-- Python 3.8+
-- Webcam
-- ESP32 development board
-- WiFi network
-
-## License
-
-MIT License
+**Made with ❤️ by AI VIET NAM - STA ANH MINH**

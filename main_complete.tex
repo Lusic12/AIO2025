@@ -1,0 +1,544 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{vietnam}
+\usepackage[vietnamese=nohyphenation]{hyphsubst}
+\usepackage[vietnamese]{babel}
+\usepackage[table,dvipsnames]{xcolor} % Required for row coloring
+\usepackage{booktabs} % Required for nicer horizontal lines
+\usepackage{ragged2e}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+\usepackage{adjustbox}
+\usepackage{multicol}
+\usepackage[inline,shortlabels]{enumitem}
+\usepackage{forest}
+\usepackage{setspace}
+\usepackage{longtable}
+\usepackage{bm} 
+\usepackage[inkscapelatex=false]{svg}
+\usepackage{titling}
+\usepackage{tabularx}
+\usepackage{makecell} 
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,mathrsfs}
+% \usepackage[draft]{hyperref}
+\usepackage{hyperref}
+\usepackage{xparse}
+\usepackage[most]{tcolorbox}
+
+%  biblatex (thay cho IEEEtran.bst) ------------------------------------
+\usepackage[
+    backend=bibtex,
+    style=ieee,
+    maxnames=1,     % chỉ hiển thị 1 tên tác giả, phần còn lại thành "et al."
+    minnames=1,
+    uniquelist=false,
+    hyperref=false
+]{biblatex}
+
+\addbibresource{references.bib}
+\DefineBibliographyStrings{english}{
+  andothers = {et\addabbrvspace al\adddot}
+}
+\AtBeginBibliography{\selectlanguage{english}}
+
+% -----------------------------------------------------------------
+\AtBeginDocument{\renewcommand\refname{}}
+
+\usepackage[toc,page]{appendix}
+\renewcommand{\appendixtocname}{Phụ lục}      
+\renewcommand{\appendixpagename}{Phụ lục}
+
+\usepackage{xurl}
+\setlength{\headheight}{14.5pt}
+\setlength{\topmargin}{-.5in} \setlength{\textheight}{9.25in}
+\setlength{\oddsidemargin}{-0.1in} \setlength{\textwidth}{6.8in}
+
+\usepackage{tocloft}
+\renewcommand{\cfttoctitlefont}{\Huge\bfseries}
+\setlength{\cftaftertoctitleskip}{2em}
+\setlength{\cftbeforesubsecskip}{7pt} % giãn cách subitem mục lục
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftsecnumwidth}{3em}
+\renewcommand{\cftsecaftersnum}{\quad}
+\renewcommand{\cftsubsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftsubsecnumwidth}{4em}
+\renewcommand{\cftsubsecaftersnum}{\quad}
+\renewcommand{\cftsubsubsecleader}{\cftdotfill{\cftdotsep}}
+\setlength   {\cftsubsubsecnumwidth}{5em}  
+\renewcommand{\cftsubsubsecaftersnum}{\quad}
+
+\PassOptionsToPackage{vietnamese.licr}{babel}
+\usepackage{vipythonhighlight} 
+\newcounter{mycounter}
+\newcommand\showmycounter{\stepcounter{mycounter}\themycounter}
+\usepackage{lipsum}
+\newcommand\showlips{\stepcounter{mycounter}\lipsum[\value{mycounter}]}
+
+%--------------------------------------------------------------------
+\usepackage{framed}
+\usepackage{fancyhdr}
+
+\usepackage{listings}	 % Sử dụng gói lệnh listings đề chèn code
+\usepackage{tvietlistings}		    % Sử dụng Tiếng Việt trong gói listings
+
+% Color --------------------------------------------------------------------
+\usepackage{epigraph}
+\usepackage{titlesec}
+
+\definecolor{codebackground}{RGB}{250, 250, 250}
+\definecolor{codecomment}{RGB}{34, 139, 34}
+\definecolor{codekeyword}{RGB}{0, 0, 255}
+\definecolor{codestring}{RGB}{255, 0, 0}
+\definecolor{codeidentifier}{RGB}{0, 0, 0}
+\definecolor{codelinenumbers}{RGB}{90, 90, 90}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\definecolor{aivnGreen}{RGB}{52,79,30}  
+\definecolor{captiongray}{gray}{0.15} 
+\definecolor{captionbg}{RGB}{250,250,250}
+
+% Table
+\newtcolorbox{captionbelowboxaivn}{
+    colback=aivnGreen,
+    colframe=aivnGreen,
+    boxrule=0pt,
+    arc=4pt,
+    left=4pt,
+    right=4pt,
+    top=2pt,
+    bottom=2pt,
+    width=\linewidth,
+    boxsep=4pt,
+    halign=center,
+    % fontupper=\bfseries\color{white}
+    fontupper=\color{white}
+}
+
+% Figure
+\newtcolorbox{figurecardcaptionaivn}{
+  colback=aivnGreen,        % Màu nền (background color)
+  colframe=aivnGreen,       % Màu viền box (border color)
+  boxrule=0pt,              % Độ dày viền box (0pt = không viền)
+  arc=2pt,                  % Độ bo góc (2pt là bo nhẹ, tăng để bo tròn hơn)
+  top=3pt,                  % Padding phía trên nội dung
+  bottom=3pt,               % Padding phía dưới nội dung
+  left=10pt,                % Padding bên trái
+  right=10pt,               % Padding bên phải
+  width=\linewidth,         % Chiều rộng bằng toàn bộ dòng
+  fontupper=\small\fontsize{11pt}{13pt}\selectfont\color{white} 
+}
+
+% Tạo counter riêng
+\newcounter{hinh}
+% Định nghĩa macro caption Hình
+\newcommand{\capfig}[1]{%
+  \refstepcounter{hinh}%
+  % \textbf{Hình~\thehinh:}~#1
+    Hình~\thehinh:~#1
+}
+
+\newtcolorbox{figurecaptionmodern}{
+  colback=captionbg,
+  colframe=aivnGreen,
+  boxrule=1.5pt,
+  bottomrule=2pt,  
+  toptitle=0pt,
+  bottomtitle=0pt,
+  left=6pt,
+  right=6pt,
+  top=4pt,
+  bottom=2pt,
+  width=\linewidth,
+  fontupper=\small\fontsize{11pt}{13pt}\selectfont\color{black},
+  halign=center
+}
+
+% Code Block -----------------------------------------------------------------
+\newtcolorbox{aivncodebox}[1][]{%
+  enhanced,
+  colback=gray!10,
+  colframe=aivnGreen,
+  coltitle=white,
+  colbacktitle=aivnGreen,
+  title=#1,
+  fonttitle=\bfseries\sffamily,
+  listing only,
+  breakable,
+  listing engine=listings,
+  listing options={
+    language=Python,
+    basicstyle=\ttfamily\footnotesize,
+    commentstyle=\color{ForestGreen},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red!70!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=5pt,
+    breaklines=true,
+    showstringspaces=false,
+    xleftmargin=1.5em,
+    framexleftmargin=1.5em
+  }
+}
+
+% Last argument allows more tcolorbox options to be added
+
+%--------------------------------------------------------------------
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{codebackground},
+    commentstyle=\color{codecomment},
+    keywordstyle=\color{codekeyword},
+    stringstyle=\color{codestring},
+    identifierstyle=\color{codeidentifier},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numberstyle=\tiny\color{codelinenumbers}, 
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,    
+    citecolor=black,
+    urlcolor=black,
+    pdftitle={Hệ Thống Điều Khiển Relay Thông Qua Hand Gesture},
+    pdfpagemode=FullScreen,
+}
+
+%--------------------------------------------------------------------
+\newcounter{choice}
+\renewcommand\thechoice{($\alph{choice}$)}
+\newcommand\choicelabel{\thechoice}
+
+%--------------------------------------------------------------------
+\newenvironment{choices}%
+  {\list{\choicelabel}%
+     {\usecounter{choice}\def\makelabel##1{\hss\llap{##1}}%
+       \settowidth{\leftmargin}{W.\hskip\labelsep\hskip 0 em}%
+       \def\choice{%
+         \item
+       } % choice
+       \labelwidth\leftmargin\advance\labelwidth-\labelsep
+       \topsep=0pt
+       \partopsep=0pt
+     }%
+  }%
+  {\endlist}
+  
+%--------------------------------------------------------------------
+\def\CChoice{%
+      \choice
+      \addanswer{\theenumi}{\thechoice}%
+    }
+    \let\CChoice\CChoice
+%    \par % Uncomment this to have choices always start a new line
+   % \let\par\@empty
+    % If we're continuing the paragraph containing the question,
+    % then leave a bit of space before the first choice:
+    \ifvmode\else\enskip\fi
+    \ignorespaces
+  %
+  {}
+\makeatother
+\newbox\allanswers
+\setbox\allanswers=\hbox{}
+\newcommand{\addanswer}[2]{%
+  \global\setbox\allanswers=\hbox{\unhbox\allanswers \quad #1.~#2}%
+}
+\newcommand{\showanswers}{%
+  \vfill
+  \begin{center}
+    Answers
+  \end{center}
+  \unhbox\allanswers
+}
+
+\makeatletter
+\newenvironment{multichoices}[1][1]{%
+\begin{multicols}{#1}}{%
+\end{multicols}}
+\makeatother
+
+\lstset{style=mystyle}
+\pagestyle{fancy}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\E}{\mathbb{E}}
+
+% Outline --------------------------------------------------------------------
+\renewcommand{\thesection}{\Roman{section}.} 
+\renewcommand{\thesubsection}{\thesection\arabic{subsection}.}
+\renewcommand{\thesubsubsection}{\thesubsection\arabic{subsubsection}.} 
+
+\titleformat{\section}{\normalfont\Huge\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\Large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+
+% Logo --------------------------------------------------------------------
+\setlength{\droptitle}{-8em}
+\pretitle{%
+    \begin{flushleft}
+        \includegraphics[height=2.0cm]{Figures/logo.png}\par
+    \end{flushleft}
+}
+\posttitle{}
+
+% Title --------------------------------------------------------------------
+\title{%
+  \begin{center}
+        \Large {AI VIET NAM -- AI COURSE 2025}\\[.5ex]  
+        \Huge \textbf{Hệ Thống Điều Khiển Relay Thông Qua Hand Gesture}\\[.5ex]
+  \end{center}
+}
+
+% Author --------------------------------------------------------------------
+\posttitle{
+    \author{
+        \begin{minipage}{\textwidth}
+        \centering
+        {
+          Anh-Minh Phan,\quad
+          Quang-Vinh~Dinh
+        }\\
+      \end{minipage}
+    }
+}
+% \setlength{\drop}{-8em}
+\date{}
+
+% Header --------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\href{https://www.facebook.com/aivietnam.edu.vn}{\textcolor{aivnGreen}{\bfseries AI VIET NAM (AIO2025)}}}
+\rhead{\href{https://aivietnam.edu.vn/}{\textcolor{aivnGreen}{\bfseries aivietnam.edu.vn}}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{1.0pt}
+\renewcommand{\headrule}{{\color{aivnGreen}\hrule width\headwidth height\headrulewidth \vskip-\headrulewidth}}
+
+% Document -------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+\section{Tổng quan Dự án}
+
+\textbf{Mục tiêu:}  
+Dự án nhằm phát triển một hệ thống điều khiển relay thông qua nhận diện cử chỉ tay (hand gesture recognition) sử dụng computer vision và machine learning. Hệ thống cho phép người dùng điều khiển các thiết bị điện (đèn, quạt, máy bơm) từ xa bằng cách thực hiện các cử chỉ tay trước camera. Toàn bộ hệ thống được triển khai qua ba giai đoạn chính:
+
+\subsection{Giai đoạn 1: Thu Thập Dữ Liệu Cử Chỉ Tay}
+Trong giai đoạn này, dữ liệu cử chỉ tay được thu thập và tiền xử lý nhằm phục vụ cho việc huấn luyện mô hình phân loại. Các bước cụ thể gồm:
+
+\begin{itemize}
+    \item \textbf{Thu thập dữ liệu thời gian thực:}  
+    Sử dụng MediaPipe Hand Detection kết hợp với webcam để ghi lại các cử chỉ tay theo từng lớp được định nghĩa trước (\texttt{light1\_on}, \texttt{light1\_off}, \texttt{light2\_on}, \texttt{light2\_off}, \texttt{turn\_on}, \texttt{turn\_off}).
+
+    \item \textbf{Trích xuất hand landmarks:}  
+    Sử dụng MediaPipe để phát hiện và trích xuất tọa độ 21 điểm đặc trưng (landmarks) của bàn tay, chuyển đổi thành vector 63 chiều (21 landmarks × 3 tọa độ x,y,z).
+
+    \item \textbf{Phân chia và lưu trữ dataset:}  
+    Dữ liệu được chia thành 3 phần: \textbf{training set} (70\%), \textbf{validation set} (15\%), và \textbf{test set} (15\%). Tất cả được lưu dưới định dạng CSV với cấu trúc chuẩn để phục vụ huấn luyện mô hình.
+\end{itemize}
+
+\subsection{Giai đoạn 2: Huấn Luyện Mô Hình Neural Network}
+Sau khi có tập dữ liệu được xử lý, hệ thống tiến hành xây dựng và huấn luyện mô hình deep learning để phân loại chính xác các cử chỉ tay:
+
+\begin{itemize}
+    \item \textbf{Thiết kế kiến trúc mô hình:}  
+    Sử dụng kiến trúc \textit{Multi-Layer Perceptron (MLP)} với các lớp fully-connected: Input (63) → Hidden (256, 128, 64) → Output (6 classes). Áp dụng ReLU activation và Dropout để tránh overfitting.
+
+    \item \textbf{Quá trình huấn luyện:}  
+    Áp dụng thuật toán tối ưu hóa Adam với learning rate 0.001. Sử dụng CrossEntropyLoss và early stopping để đảm bảo mô hình không bị overfitting. Theo dõi accuracy và loss trên cả train và validation sets.
+
+    \item \textbf{Đánh giá và kiểm thử:}  
+    Kiểm tra độ chính xác phân loại trên test set độc lập. Tạo classification report chi tiết với các metrics: accuracy, precision, recall, F1-score cho từng gesture class.
+\end{itemize}
+
+\subsection{Giai đoạn 3: Triển Khai Hệ Thống Điều Khiển Relay}
+Giai đoạn cuối tích hợp mô hình đã huấn luyện với hardware control để điều khiển relay thời gian thực:
+
+\begin{itemize}
+    \item \textbf{Nhận diện cử chỉ real-time:}  
+    Camera thu hình ảnh liên tục, MediaPipe phát hiện hand landmarks, và mô hình neural network phân loại gesture với confidence threshold để đảm bảo độ chính xác.
+
+    \item \textbf{Điều khiển relay qua Modbus RTU:}  
+    Hệ thống giao tiếp với relay module thông qua giao thức Modbus RTU RS485 ở tốc độ 9600 baud. Sử dụng các lệnh Write Single Coil (Function Code 05) để bật/tắt từng relay.
+
+    \item \textbf{Giao diện người dùng:}  
+    Cung cấp giao diện trực quan hiển thị trạng thái các relay, gesture được nhận diện, confidence score, và cho phép chuyển đổi giữa chế độ thực tế và mô phỏng.
+
+    \item \textbf{Logging và monitoring:}  
+    Hệ thống ghi lại toàn bộ hoạt động vào file log với timestamp, bao gồm gesture được nhận diện, hành động thực thi, và trạng thái relay để dễ dàng theo dõi và debug.
+\end{itemize}
+
+\section{Giới thiệu về Nhận diện Cử chỉ Tay trong Điều khiển Relay}
+
+\subsection{Tổng quan về Hand Gesture Recognition}
+Nhận diện cử chỉ tay (Hand Gesture Recognition) là một lĩnh vực quan trọng trong computer vision và human-computer interaction, đặc biệt hữu ích trong các ứng dụng điều khiển thiết bị không tiếp xúc. Trong dự án này, công nghệ được áp dụng để tạo ra một hệ thống điều khiển relay thông minh và tiện lợi.
+
+\subsection{Quy trình nhận diện và điều khiển}
+Hệ thống hoạt động theo quy trình 4 bước chính:
+
+\begin{itemize}
+    \item \textbf{Phát hiện bàn tay:}  
+    MediaPipe Hand Detection sử dụng các mô hình deep learning để phát hiện và track bàn tay trong video stream real-time với độ chính xác cao.
+
+    \item \textbf{Trích xuất hand landmarks:}  
+    Trích xuất 21 điểm đặc trưng quan trọng trên bàn tay, bao gồm các khớp ngón tay, cổ tay, và đốt tay. Mỗi landmark có tọa độ 3D (x, y, z) tạo thành vector 63 chiều.
+
+    \item \textbf{Phân loại cử chỉ:}  
+    Vector đặc trưng được đưa vào mô hình neural network đã huấn luyện để phân loại thành 6 lớp gesture: \texttt{light1\_on}, \texttt{light1\_off}, \texttt{light2\_on}, \texttt{light2\_off}, \texttt{turn\_on}, \texttt{turn\_off}.
+
+    \item \textbf{Thực thi lệnh điều khiển:}  
+    Dựa trên gesture được nhận diện, hệ thống gửi lệnh Modbus RTU tới relay module để bật/tắt các thiết bị điện tương ứng.
+\end{itemize}
+
+\subsection{Ưu điểm của hệ thống}
+\begin{itemize}
+    \item \textbf{Điều khiển không tiếp xúc:}  
+    Người dùng có thể điều khiển thiết bị từ xa mà không cần chạm vào công tắc, đặc biệt hữu ích trong môi trường yêu cầu vệ sinh hoặc khi tay bận việc khác.
+
+    \item \textbf{Giao tiếp chuẩn công nghiệp:}  
+    Sử dụng giao thức Modbus RTU RS485 - một chuẩn giao tiếp phổ biến trong tự động hóa công nghiệp, đảm bảo tính ổn định và khả năng mở rộng.
+
+    \item \textbf{Tính linh hoạt cao:}  
+    Hệ thống có thể được mở rộng để điều khiển nhiều loại thiết bị khác nhau thông qua việc thêm các gesture mới và cấu hình relay tương ứng.
+\end{itemize}
+
+\subsection{Công nghệ MediaPipe của Google}
+\textbf{MediaPipe} là framework mã nguồn mở do Google phát triển, cung cấp các solution mạnh mẽ cho real-time multimedia processing. Trong dự án này, MediaPipe Hand Detection mang lại:
+
+\begin{itemize}
+    \item \textbf{Độ chính xác cao:}  
+    Pre-trained models với khả năng phát hiện hand landmarks chính xác ngay cả trong điều kiện ánh sáng không lý tưởng.
+
+    \item \textbf{Hiệu suất real-time:}  
+    Tối ưu hóa để chạy real-time trên CPU thông thường, không đòi hỏi GPU chuyên dụng.
+
+    \item \textbf{Dễ tích hợp:}  
+    Python API đơn giản, dễ sử dụng và tích hợp với các framework machine learning như PyTorch.
+\end{itemize}
+
+\section{Giao thức Modbus RTU và Relay Control}
+
+\subsection{Tổng quan về Modbus RTU}
+\textbf{Modbus RTU} (Remote Terminal Unit) là một giao thức truyền thông tuần tự được sử dụng rộng rãi trong tự động hóa công nghiệp. Trong dự án này, giao thức được sử dụng để điều khiển relay module thông qua giao tiếp RS485.
+
+\subsection{Đặc điểm kỹ thuật}
+\begin{itemize}
+    \item \textbf{Tốc độ truyền:} 9600 baud (chuẩn cho hầu hết relay modules)
+    \item \textbf{Cấu trúc dữ liệu:} 8 data bits, 1 stop bit, no parity
+    \item \textbf{Giao tiếp:} RS485 half-duplex
+    \item \textbf{Function Code:} 05 (Write Single Coil) để điều khiển relay
+\end{itemize}
+
+\subsection{Relay Module 4 kênh}
+Hệ thống sử dụng module relay 4 kênh 12V với giao tiếp Modbus RTU, cho phép điều khiển các thiết bị điện với công suất cao một cách an toàn và ổn định.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{fig_prj/relay.png}
+    \caption{Module relay 4 kênh với giao tiếp Modbus RTU}
+    \label{fig:relay-module}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{fig_prj/connected.png}
+    \caption{Sơ đồ kết nối hệ thống điều khiển relay}
+    \label{fig:system-connection}
+\end{figure}
+
+\newpage
+\setcounter{tocdepth}{3} 
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+% Include main content from existing main.tex
+\input{main}
+
+\newpage
+\section{Tài liệu tham khảo}
+\label{section:references}
+\nocite{*}
+\vspace{-3.2em}   
+\printbibliography
+
+% Appendix -------------------------------------------------------------------
+\newpage
+\begin{appendices}
+
+\begin{enumerate}
+    \item \textbf{Datasets:} Các file dataset được đề cập trong bài có thể được tải tại \href{https://aivietnam.edu.vn/}{đây}.
+    \item \textbf{Code Repository:} Source code hoàn chỉnh của dự án có thể được tải tại \href{https://github.com/aivietnam/gesture-relay-control}{GitHub Repository}.
+    \item \textbf{Hardware Setup:} Hướng dẫn chi tiết cấu hình hardware và wiring diagram có thể được tải tại \href{https://aivietnam.edu.vn/}{đây}.
+    
+    \item \textbf{Rubric đánh giá:}
+
+\begin{longtable}{|c|p{7.5cm}|p{7cm}|}
+\hline
+\textbf{Mục} & \textbf{Kiến Thức} & \textbf{Đánh Giá} \\\hline
+ I. & 
+ - Kiến thức về Computer Vision và MediaPipe. \newline
+ - Kiến thức về Deep Learning với PyTorch. \newline
+ - Kiến thức về giao thức Modbus RTU. \newline
+ - Kiến thức về điều khiển relay và automation. \newline
+ - Kiến thức về xử lý dữ liệu và model training.
+ & 
+ - Nắm được lý thuyết về hand gesture recognition và MediaPipe framework. \newline
+ - Có khả năng thu thập và xử lý dữ liệu hand landmarks. \newline
+ - Hiểu được kiến trúc neural network và process training model. \newline
+ - Có khả năng triển khai hệ thống điều khiển relay real-time. \newline
+ - Nắm được giao thức Modbus RTU và hardware integration.
+\\\hline
+ II. &
+ - Kỹ năng lập trình Python advanced. \newline
+ - Kỹ năng xử lý video/image processing. \newline
+ - Kỹ năng thiết kế và train neural network. \newline
+ - Kỹ năng giao tiếp serial và hardware control. \newline
+ - Kỹ năng debug và troubleshooting.
+ &
+ - Có khả năng implement full pipeline từ data collection đến deployment. \newline
+ - Có khả năng tối ưu hóa model performance và accuracy. \newline
+ - Có khả năng tích hợp software với hardware control. \newline
+ - Có khả năng testing và validation hệ thống hoàn chỉnh.
+\\\hline
+ III. &
+ - Khả năng phân tích và thiết kế hệ thống. \newline
+ - Khả năng modular programming và code organization. \newline
+ - Khả năng documentation và project presentation. \newline
+ - Khả năng troubleshooting và problem solving.
+ &
+ - Có khả năng thiết kế kiến trúc hệ thống hoàn chỉnh. \newline
+ - Có khả năng tạo documentation chi tiết và clear. \newline
+ - Có khả năng present và demo hệ thống hoạt động. \newline
+ - Có khả năng identify và resolve các vấn đề technical.
+\\\hline
+\end{longtable}
+
+\end{enumerate}
+
+\end{appendices}
+\end{document}
