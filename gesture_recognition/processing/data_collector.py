@@ -10,7 +10,7 @@ import numpy as np
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from gesture_recognization.common.models import HandLandmarksDetector, label_dict_from_config_file
+from gesture_recognition.common.models import HandLandmarksDetector, label_dict_from_config_file
 
 def is_handsign_character(char: str) -> bool:
     """
