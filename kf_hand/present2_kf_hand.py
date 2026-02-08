@@ -199,7 +199,7 @@ def main_bbox_tracking():
 
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     frame_size = (320, 240)
-    out = cv2.VideoWriter('gt.mp4', fourcc, 15.0, frame_size)
+    out = cv2.VideoWriter('predict.mp4', fourcc, 15.0, frame_size)
 
     # https://www.votchallenge.net/vot2022/dataset.html
     image_paths = sorted(glob.glob("./vot2022_hand/images/*.jpg"))
