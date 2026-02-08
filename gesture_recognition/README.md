@@ -176,11 +176,9 @@ python main_controller --test --port COM3
 ## Yêu cầu hệ thống
 
 - **Python 3.10+**
-- **Webcam HD (720p+)**
 - **4GB RAM** (khuyến nghị 8GB)
 - **USB-Serial converter** (nếu dùng relay thật)
 - **Windows 10/11** (Linux/Mac: experimental)
 
 
 
-**Made with ❤️ by AI VIET NAM - STA ANH MINH**
